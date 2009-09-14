@@ -76,34 +76,18 @@ class EventQueue(queue.Queue):
         priority, time_posted, item = queue.Queue.get(self, block, timeout)
         return item
 
-#class EventQueue(object):
-#    def __init__(self):
-#        self.queue = queue.Queue(1024)
-#
-#    def put(self, item):
-#        self.queue.put_nowait(item)
-#
-#    def get(self):
-#        item = self.queue.get()
-#        return item
-#
-#    def size(self):
-#        return self.queue.qsize()
-
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         e = Event()
         e.add('method', 'GET')
         e.add('path', self.path)
         e.add('http_version', self.request_version)
+        q.put(e)
+        log.debug("Queue Size: %d" % q.qsize())
         log.debug("Adding event")
 
     def do_PUT(self):
-        e = Event()
-        e.add('method', 'PUT')
-        e.add('path', self.path)
-        e.add('http_version', self.request_version)
-        log.debug("Adding event")
+        pass
 
 class HttpListener(object):
     def __init__(self, host, port):
@@ -118,5 +102,6 @@ class Dispatcher(object):
         self.event_handlers = []
 
 if __name__ == "__main__":
+    q = EventQueue()
     h = HttpListener('localhost', 8000)
     h.run()
