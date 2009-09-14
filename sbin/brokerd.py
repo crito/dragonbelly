@@ -8,6 +8,7 @@ import sys
 import logging
 import logging.handlers
 import queue, heapq, time
+from threading import Timer
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 __version__  = '0.1'
@@ -27,9 +28,9 @@ class Event(object):
         log.debug('Event key/value added: %s => %s' % (key, value))
         self.data[key] = value
 
-    def get(self):
-        log.debug('Event key/value retrieved: %s => %s' % (key, value))
-        return self.request
+    def get(self, key):
+        log.debug('Event key retrieved: %s' % key)
+        return self.data[key]
 
     def add_to_queue():
         pass
@@ -65,13 +66,13 @@ class EventQueue(queue.Queue):
         """Retrieve next item from the queue."""
         return heapq.heappop(self.queue)
 
-    def put(self, item, priority=0, block=True, timeout=None):
+    def put(self, item, priority=0, block=False, timeout=None):
         """Override Queue.Queue's put function to incorporate the priority
         argument."""
         decorated_item = priority, time.time(), item
         queue.Queue.put(self, decorated_item, block, timeout)
 
-    def get(self, block=True, timeout=None):
+    def get(self, block=False, timeout=None):
         """Override Queue.Queue's get function."""
         priority, time_posted, item = queue.Queue.get(self, block, timeout)
         return item
@@ -82,12 +83,23 @@ class RequestHandler(BaseHTTPRequestHandler):
         e.add('method', 'GET')
         e.add('path', self.path)
         e.add('http_version', self.request_version)
-        q.put(e)
-        log.debug("Queue Size: %d" % q.qsize())
-        log.debug("Adding event")
+        try:
+            q.put(e)
+            log.debug("Queue Size: %d" % q.qsize())
+            log.debug("Adding event")
+        except queue.Full as e:
+            log.debug("Queue is full. no event added.")
+            log.debug(e)
 
     def do_PUT(self):
-        pass
+        try:
+            e = q.get()
+            log.debug('Retrieved an event:')
+            log.debug('Path: %s' % e.get('path'))
+            log.debug('Queue size: %s' % q.qsize())
+        except queue.Empty as e:
+            log.debug('Queue is empty.')
+            log.debug(e)
 
 class HttpListener(object):
     def __init__(self, host, port):
