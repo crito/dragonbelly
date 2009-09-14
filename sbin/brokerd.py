@@ -22,18 +22,15 @@ log.addHandler(log_handler)
 
 class Event(object):
     def __init__(self):
-        self.data = {}
+        self._data = {}
 
     def add(self, key, value):
         log.debug('Event key/value added: %s => %s' % (key, value))
-        self.data[key] = value
+        self._data[key] = value
 
     def get(self, key):
         log.debug('Event key retrieved: %s' % key)
-        return self.data[key]
-
-    def add_to_queue():
-        pass
+        return self._data[key]
 
 class EventQueue(queue.Queue):
     """
@@ -43,28 +40,28 @@ class EventQueue(queue.Queue):
     def _init(self, maxsize):
         """Initializes the array to use for the eventQueue. Called by 
         __init__() of the parent class."""
-        self.maxsize = maxsize
-        self.queue = [ ]
+        self._maxsize = maxsize
+        self._queue = [ ]
 
     def _qsize(self):
         """Return current amount of elements of the EventQueue."""
-        return len(self.queue)
+        return len(self._queue)
 
     def _empty(self):
         """Check whether the EventQueue is empty."""
-        return not self.queue
+        return not self._queue
 
     def _full(self):
         """Check whether EventQueue is full."""
-        return self.maxsize > 0 and len(self.queue) >= self.maxsize
+        return self._maxsize > 0 and len(self._queue) >= self._maxsize
 
     def _put(self, item):
         """Put a new item onto the queue."""
-        heapq.heappush(self.queue, item)
+        heapq.heappush(self._queue, item)
 
     def _get(self):
         """Retrieve next item from the queue."""
-        return heapq.heappop(self.queue)
+        return heapq.heappop(self._queue)
 
     def put(self, item, priority=0, block=False, timeout=None):
         """Override Queue.Queue's put function to incorporate the priority
@@ -103,8 +100,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 class HttpListener(object):
     def __init__(self, host, port):
-        self.server_address = (host, port)
-        self.httpd = HTTPServer(self.server_address, RequestHandler)
+        self._server_address = (host, port)
+        self.httpd = HTTPServer(self._server_address, RequestHandler)
 
     def run(self):
         self.httpd.serve_forever()
