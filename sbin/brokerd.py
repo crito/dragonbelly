@@ -5,6 +5,7 @@ brokerd - Manage incoming HTTP requests and redirect these requests
 """
 
 import sys
+import os
 import logging
 import logging.handlers
 import queue, heapq, time
@@ -21,6 +22,8 @@ log_handler = logging.FileHandler(logfile)
 log.addHandler(log_handler)
 
 class Event(object):
+    """An Event is a single incoming request. A request is a HTTP command and is
+    stored as an event in a queue."""
     def __init__(self):
         self._data = {}
 
@@ -110,7 +113,37 @@ class Dispatcher(object):
     def __init__(self):
         self.event_handlers = []
 
-if __name__ == "__main__":
-    q = EventQueue()
+q = EventQueue()
+
+def main():
     h = HttpListener('localhost', 8000)
     h.run()
+
+if __name__ == "__main__":
+    # Do the double fork magic
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # Exit the parent
+            sys.exit(0)
+    except OSError as e:
+        log.debug("Fork failed.")
+        log.debug(e)
+        sys.exit(1)
+
+    # decouple from the parent environment
+    os.chdir("/")
+    os.setsid()
+    os.umask(0)
+
+    # second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError as e:
+        log.debug("Second Fork failed.")
+        log.debug(e)
+        sys.exit(1)
+
+    main()
