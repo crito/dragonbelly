@@ -11,8 +11,9 @@ import logging.handlers
 import queue, heapq, time
 from threading import Timer
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from optparse import OptionParser
 
-__version__  = '0.1'
+__version__  = '0.2'
 __progname__ = 'brokerd'
 
 logfile = '/var/log/brokerd.log'
@@ -120,30 +121,43 @@ def main():
     h.run()
 
 if __name__ == "__main__":
-    # Do the double fork magic
-    try:
-        pid = os.fork()
-        if pid > 0:
-            # Exit the parent
+    parser = OptionParser()
+    parser.add_option("-d", "--daemon", action="store_true", dest="daemonize", 
+                      default=False, help="Daemonize the brokerd process.")
+
+    (options, args) = parser.parse_args()
+
+    if options.daemonize:
+        # Do the double fork magic
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # Exit the parent
+                sys.exit(0)
+        except OSError as e:
+            log.debug("Fork failed.")
+            log.debug(e)
+            sys.exit(1)
+
+        # decouple from the parent environment
+        os.chdir("/")
+        os.setsid()
+        os.umask(0)
+
+        # second fork
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as e:
+            log.debug("Second Fork failed.")
+            log.debug(e)
+            sys.exit(1)
+
+        main()
+    else:
+        try:
+            main()
+        except KeyboardInterrupt:
+            print("CTRL-C. Cleaning up.")
             sys.exit(0)
-    except OSError as e:
-        log.debug("Fork failed.")
-        log.debug(e)
-        sys.exit(1)
-
-    # decouple from the parent environment
-    os.chdir("/")
-    os.setsid()
-    os.umask(0)
-
-    # second fork
-    try:
-        pid = os.fork()
-        if pid > 0:
-            sys.exit(0)
-    except OSError as e:
-        log.debug("Second Fork failed.")
-        log.debug(e)
-        sys.exit(1)
-
-    main()
