@@ -12,6 +12,7 @@ import queue, heapq, time
 from threading import Timer
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from optparse import OptionParser
+import signal
 
 __version__  = '0.2'
 __progname__ = 'brokerd'
@@ -116,14 +117,18 @@ class Dispatcher(object):
 
 q = EventQueue()
 
-def main():
-    h = HttpListener('localhost', 8000)
+def main(host, port):
+    h = HttpListener(host, port)
     h.run()
 
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("-d", "--daemon", action="store_true", dest="daemonize", 
                       default=False, help="Daemonize the brokerd process.")
+    parser.add_option("-H", "--host", dest="host", default="0.0.0.0", 
+                      help="IP to listen to.")
+    parser.add_option("-p", "--port", type="int", dest="port", default=8000, 
+                      help="Port to listen to..")
 
     (options, args) = parser.parse_args()
 
@@ -154,10 +159,10 @@ if __name__ == "__main__":
             log.debug(e)
             sys.exit(1)
 
-        main()
+        main(options.host, options.port)
     else:
         try:
-            main()
+            main(options.host, options.port)
         except KeyboardInterrupt:
             print("CTRL-C. Cleaning up.")
             sys.exit(0)
