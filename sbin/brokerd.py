@@ -115,11 +115,77 @@ class Dispatcher(object):
     def __init__(self):
         self.event_handlers = []
 
+class ConfigParser(object):
+    """
+    Read and parse the configuration file and the command line arguments.
+
+    There is an order in which configuration options are read:
+        1) Default values
+        2) Configuration file (/etc/dragonbelly/dragonbelly.conf)
+        3) Command line options
+
+    The configuration file obeys a simple structure:
+        daemonize yes;
+        listen 0.0.0.0:6565;
+        logfile /var/log/access.log;
+        # load balanced db backend
+        upstream db {
+            server 10.0.0.10:6444;
+            server 10.0.0.20:6444;
+        }
+        domain {
+            domain_name www.domain.com;
+            db_backend db;
+            #db_backend 10.0.0.10:6444;
+            logfile /var/log/domain.log;
+            loglevel warn;
+            type jpg {
+                replicate 3;
+            }
+            type pdf {
+                replicate 2;
+                client_wait_to_finish true;
+            }
+        }
+    """
+    def __init__(self):
+        pass
+
 q = EventQueue()
 
 def main(host, port):
     h = HttpListener(host, port)
     h.run()
+
+def daemonize():
+    """
+    Daemonize the server.
+    """
+    # Do the double fork magic
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # Exit the parent
+            sys.exit(0)
+    except OSError as e:
+        #log.debug("ddFork failed.")
+        #log.debug(e)
+        sys.exit(1)
+
+    # decouple from the parent environment
+    os.chdir("/")
+    os.setsid()
+    os.umask(0)
+
+    # second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError as e:
+        #log.debug("Second Fork failed.")
+        #log.debug(e)
+        sys.exit(1)
 
 if __name__ == "__main__":
     parser = OptionParser()
@@ -133,32 +199,7 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     if options.daemonize:
-        # Do the double fork magic
-        try:
-            pid = os.fork()
-            if pid > 0:
-                # Exit the parent
-                sys.exit(0)
-        except OSError as e:
-            log.debug("Fork failed.")
-            log.debug(e)
-            sys.exit(1)
-
-        # decouple from the parent environment
-        os.chdir("/")
-        os.setsid()
-        os.umask(0)
-
-        # second fork
-        try:
-            pid = os.fork()
-            if pid > 0:
-                sys.exit(0)
-        except OSError as e:
-            log.debug("Second Fork failed.")
-            log.debug(e)
-            sys.exit(1)
-
+        daemonize()
         main(options.host, options.port)
     else:
         try:

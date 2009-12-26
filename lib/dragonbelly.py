@@ -17,7 +17,7 @@ class Dragonbelly(object):
 
     def _write(self, data):
         try:
-            self._sock.sendall(s)
+            self._sock.sendall(data)
         except socket.error, e:
             if e.args[0] == 32:
                 # broken pipe
@@ -52,11 +52,22 @@ class Dragonbelly(object):
         """
         Disconnect from the dragonbelly daemon.
         """
-        if isinstance(self._sock, sock.socket):
+        if isinstance(self._sock, socket.socket):
             try:
                 self._sock.close()
-            except: socket.error:
+            except socket.error:
                 pass
         self._sock = None
         self._fp = None
 
+    def get_response(self):
+        data = self._read().strip()
+        if not data:
+            self.disconnect()
+            raise ConnectionError("Socket closed on remote end")
+
+    def get(self, uri, domain):
+        s = "GET %s HTTP/1.1\r\nHost: %s\r\n" % (uri, domain)
+        self.connect()
+        self._write(s)
+        return self.get_response()
