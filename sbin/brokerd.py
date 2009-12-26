@@ -17,6 +17,9 @@ import signal
 __version__  = '0.2'
 __progname__ = 'brokerd'
 
+class DragonbellyError(Exception): pass
+class ConfigError(DragonbellyError): pass
+
 logfile = '/var/log/brokerd.log'
 log = logging.getLogger('brokerd')
 log.setLevel(logging.DEBUG)
@@ -115,50 +118,69 @@ class Dispatcher(object):
     def __init__(self):
         self.event_handlers = []
 
-class ConfigParser(object):
+class DragonDomain(object):
+    """
+    A domain within the dragonbelly context.
+
+    A domain is to dragonbelly what a virtual host is to a webserver.
+    """
+    def __init__(self):
+        pass
+
+class DragonUpstream(object):
+    """
+    Upstream is a base object for a backend. 
+
+    This object is used for DB backends as well as for a file delivery or file
+    upload backend.
+    """
+    def __init__(self):
+        pass
+
+class DragonConfig(object):
     """
     Read and parse the configuration file and the command line arguments.
 
     There is an order in which configuration options are read:
         1) Default values
-        2) Configuration file (/etc/dragonbelly/dragonbelly.conf)
-        3) Command line options
+        2) Command line options
+        3) Configuration file (/etc/dragonbelly/dragonbelly.conf)
 
-    The configuration file obeys a simple structure:
-        daemonize yes;
-        listen 0.0.0.0:6565;
-        logfile /var/log/access.log;
-        # load balanced db backend
-        upstream db {
-            server 10.0.0.10:6444;
-            server 10.0.0.20:6444;
-        }
-        domain {
-            domain_name www.domain.com;
-            db_backend db;
-            #db_backend 10.0.0.10:6444;
-            logfile /var/log/domain.log;
-            loglevel warn;
-            type jpg {
-                replicate 3;
-            }
-            type pdf {
-                replicate 2;
-                client_wait_to_finish true;
-            }
-        }
+    The configuration file obeys a structure similar to the nginx configuration
+    file format. See the dragonbelly.conf in the source tree for an example.
     """
     def __init__(self, options):
-        self.daemonize = options.daemonize
-        self.host = options.host
-        self.port = options.port
+        self._conf['daemonize'] = options.daemonize
+        self._conf['host'] = options.host
+        self._conf['port'] = options.port
+        self._conf['logfile'] = options.logfile
+        self._conf['loglevel'] = options.loglevel
+        self._conf['conffile'] = options.conffile
 
         # Load config file and parse its contents
         self.load('/usr/local/etc/dragonbelly.conf')
 
     def load(self, file):
-        pass
+        """
+        Load a configuration file.
+        """
+        # Load config file ``file``
+        try:
+            f = open(file, 'r')
+            conf = f.readlines()
+        except IOError as e:
+            raise ConfigError("Error %s while opening config file. %s." % tuple(e.args))
+        finally:
+            f.close()
 
+        for row in conf:
+            # Remove leading and trailing whitespace
+            row = row.strip()
+            # Ignore comments and empty lines
+            if row[0] == '#' or row[0] == '\0':
+                continue
+
+            argv = row.split()
 
 q = EventQueue()
 
@@ -200,10 +222,16 @@ if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("-d", "--daemon", action="store_true", dest="daemonize", 
                       default=False, help="Daemonize the brokerd process.")
-    parser.add_option("-H", "--host", dest="host", default="0.0.0.0", 
+    parser.add_option("-H", "--host", dest="host", default="127.0.0.1", 
                       help="IP to listen to.")
-    parser.add_option("-p", "--port", type="int", dest="port", default=8000, 
+    parser.add_option("-p", "--port", type="int", dest="port", default=6565, 
                       help="Port to listen to..")
+    parser.add_option("-l", "--logfile", dest="logfile", 
+                      default="/var/log/dragonbelly.log",  help="File to log to.")
+    parser.add_option("-V", "--loglevel", dest="loglevel", 
+                      default="DEBUG",  help="Loglevel to log.")
+    parser.add_option("-c", "--config", dest="conffile", 
+                      default="/etc/dragonbelly/dragonbelly.conf",  help="Config file to use.")
 
     (options, args) = parser.parse_args()
 
