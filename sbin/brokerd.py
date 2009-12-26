@@ -148,8 +148,17 @@ class ConfigParser(object):
             }
         }
     """
-    def __init__(self):
+    def __init__(self, options):
+        self.daemonize = options.daemonize
+        self.host = options.host
+        self.port = options.port
+
+        # Load config file and parse its contents
+        self.load('/usr/local/etc/dragonbelly.conf')
+
+    def load(self, file):
         pass
+
 
 q = EventQueue()
 
