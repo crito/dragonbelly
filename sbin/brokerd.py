@@ -157,6 +157,9 @@ class DragonConfig(object):
         self._conf['loglevel'] = options.loglevel
         self._conf['conffile'] = options.conffile
 
+        self._upstreams = {}
+        self._domains = {}
+
         # Load config file and parse its contents
         self.load('/usr/local/etc/dragonbelly.conf')
 
@@ -173,6 +176,10 @@ class DragonConfig(object):
         finally:
             f.close()
 
+        # context and depth for current configuration parsing
+        parse_depth = 0
+        parse_context = 'global'  
+
         for row in conf:
             # Remove leading and trailing whitespace
             row = row.strip()
@@ -181,7 +188,24 @@ class DragonConfig(object):
                 continue
 
             argv = row.split()
+            if argv[0] in 'daemonize' and len(argv) == 2:
+                self._conf['daemonize'] = argv[1]
+            elif argv[0] in 'listen' and len(argv) == 2:
+                listen = argv[1].split(':')
+                self._conf['host'] = listen[0]
+                if len(listen) == 2:
+                    self._conf['port'] = listen[1]
+            elif argv[0] in 'logfile' and len(argv) == 2:
+                self._conf['logfile'] = argv[1]
+            elif argv[0] in 'loglevel' and len(argv) == 2:
+                self._conf['loglevel'] = argv[1]
 
+            if argv[0] == 'upstream':
+                self._upstreams[argv[1]] = DragonUpstream()
+            if argv[0] == 'domain':
+                self._domains[argv[1]] = DragonDomain()
+
+            
 q = EventQueue()
 
 def main(host, port):
