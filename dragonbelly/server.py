@@ -26,13 +26,32 @@ DEFAULT_ERROR_MESSAGE = """\
 
 class IOLoop(object):
     def __init__(self, poll):
-        self._poll = poll
+        self._poll = poll()
+
+    @classmethod
+    def instance(cls):
+        """Returns a global IOLoop instance.
+
+        Most single-threaded applications have a single, global IOLoop.
+        Use this method instead of passing around IOLoop instances 
+        throughout your code.
+
+        A common pattern for classes that depend on IOLoops is to use
+        a default argument to enable programs with multiple IOLoops
+        but not require the argument for simpler applications:
+
+            class MyClass(object):
+                def __init__(self, io_loop=None):
+                    self.io_loop = io_loop or IOLoop.instance()
+        """
+        if not hasattr(cls, "_instance"):
+            cls._instance = cls()
+        return cls._instance
 
 class HTTPServer(object):
     # HTTPServer Class. 
     # Command parsing generously copied from /usr/lib/python3/http/server.py. 
     # keep-alive taken from same source
-
     error_message_format = DEFAULT_ERROR_MESSAGE
     #self.error_content_type = DEFAULT_ERROR_CONTENT_TYPE
     
@@ -53,20 +72,16 @@ class HTTPServer(object):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind((self.host, self.port))
-        self._socket.listen(256)
+        self._socket.listen(128)
         self._socket.setblocking(0)
-        
+
         self._epoll = select.epoll()
         self._epoll.register(self.fileno(), select.EPOLLIN)
 
         self._serving = True
         try:
-            self.c = {}; self.r = {}; self.w = {}
+            self.c = {}; self.r = HTTPRequest(); self.w = {}
             while self._serving:
-                #r, w, e = select.select([self], [], [], poll_interval)
-                #if r:
-                #    self._handle_request()
-                #c, a = self.get_request()
                 events = self._epoll.poll(1)
                 for fileno, event in events:
                     if fileno == self._socket.fileno():
@@ -102,20 +117,8 @@ class HTTPServer(object):
         self._epoll.close()
         self._socket.close()
 
-#                try:
-#                    c, a = self._socket..accept()
-#                except socket.error, e:
-#                    if e[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-#                        return
-#                    raise
-#
-#                self._handle_request(c, a)
-#            self.shutdown()
-
-        self._socket.close()
-
     def _handle_request(self, connection, address):
-        #print "%s from %s" % (time.time(), address)
+        print("%s from %s" % (time.time(), address))
         #while True:
         self.close_connection = 1
         self._handle_one_request()
@@ -247,6 +250,13 @@ class HTTPRequestHandler(object):
 
 class HTTPResponse(object):
     pass
+
+class HTTPRequest(object):
+    """A basic HTTP request."""
+    def __init__(self):
+        self.method = None
+        self.path = ''
+
 
 if __name__ == "__main__":
     h = HTTPServer('', 6565)
