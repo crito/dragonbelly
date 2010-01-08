@@ -19,11 +19,20 @@ problem of providing a replicated, distributed and stackable mass storage to a
 high available web cluster. It tries so by reusing as many existing open source
 application as possible.
 
+Dragonbelly comes along as the glue to bind several open source technologies
+into the result we want. It provides replication and failover capabilities.
+It provides a thin layer of proxy software that translates http requests to a
+load balanced webserver backend. Client requests can be either read (GET) or
+(PUT) requests. In both cases the requests result in a redirect with a real
+webserver address. Once a new file was created (PUT), this file is replicated
+to other hosts of the webserver backend. The replication happens as a
+background process.
+
 At its core, dragonbelly provides a asynchronous, fast webserver that can
 process a subset of the HTTP protocol. This daemon listens for incoming ``GET`` or
 ``PUT`` (?) requests. If a ``GET`` request comes in, the daemon takes the requested
 path and makes a lookup in its internal state database. It calculates a path to
-a real existing webserver and returns a 302 redirect status. 
+a real existing webserver and returns a 301 redirect status. 
 
 If a ``PUT`` request is received by the dragonbelly daemon, it creates a new record
 in its internal database and returns a 302 to an existing webserver that can
@@ -97,6 +106,15 @@ Once the broker daemon retrieved the real locations of a file, it decides on
 one location based on its load balancing algorithm and returns to the client a
 HTTP 302 redirect containing the new URL.
 
+::
+    HTTP/1.1 302 Found
+    Date: Fri, 08 Jan 2010 17:33:59 GMT
+    Server: dragonbelly/0.1
+    Content-Type: text/html; charset=UTF-8
+    Content-Length: 185
+    Location: http://static03.domain.com/
+    Connection: close
+
 The client follows the redirect and retrieves the file using the HTTP protocol.
 
 Write
@@ -140,7 +158,15 @@ updating the domain database.
 Details regarding the replication is dependent on the configuration. Also the
 role of the client is configurable.
 
-Simple md5 checksums are used to verify the transfers are succesful.
+Dragonbelly daemons can form groups and determine up-status from other hosts.
+Membership and node messaging is implemented using spread. Each Dragonbelly
+daemon at least joins one group. A group represents a domain and forms the
+basis for the failover and replication mecahnisms.
+
+One or more shares can be attached to each group. A share is defined as a
+mapping of physical fs paths to a url. 
+
+Simple md5 checksums are used to verify that the transfers are succesful.
 
 Dragonbelly players
 -------------------
