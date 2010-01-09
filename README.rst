@@ -107,6 +107,7 @@ one location based on its load balancing algorithm and returns to the client a
 HTTP 302 redirect containing the new URL.
 
 ::
+    
     HTTP/1.1 302 Found
     Date: Fri, 08 Jan 2010 17:33:59 GMT
     Server: dragonbelly/0.1
