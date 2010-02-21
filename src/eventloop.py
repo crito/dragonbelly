@@ -58,26 +58,26 @@ class EventLoop(object):
         """
         self._running = True
         poll_timeout = 0.2
+        while True:
+            if not self._running:
+                break
 
-        if not self._running:
-            break
-
-        try:
-            event_pairs = self._poll.poll(poll_timeout)
-        except Exception, e:
-            raise
-
-        self._events.update(event_pairs)
-        while self._events:
-            fd, events = self._events.popitem()
             try:
-                self._handlers[fd](fd, events)
-            except KeyboardInterrupt:
+                event_pairs = self._poll.poll(poll_timeout)
+            except Exception, e:
                 raise
-            except OSError, e:
-                if e[0] == errno.EPIPE:
-                    # Happens when the client closes the connection
-                    pass
+
+            self._events.update(event_pairs)
+            while self._events:
+                fd, events = self._events.popitem()
+                try:
+                    self._handlers[fd](fd, events)
+                except KeyboardInterrupt:
+                    raise
+                except OSError, e:
+                    if e[0] == errno.EPIPE:
+                        # Happens when the client closes the connection
+                        pass
 
 class _EPoll(object):
     """An epoll-based event loop using our C module for Python 2.5 systems"""
